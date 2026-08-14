@@ -9,13 +9,7 @@ import type { Place } from "@/components/MapView";
 import { CATEGORIES } from "@/lib/categories";
 import NavRail from "@/components/NavRail";
 import CompassRose from "@/components/CompassRose";
-import WorldPulse from "@/components/WorldPulse";
-import LeaderboardPanel from "@/components/LeaderboardPanel";
-import QuestPanel from "@/components/QuestPanel";
-import TrendingPanel from "@/components/TrendingPanel";
-import CommunityPanel from "@/components/CommunityPanel";
-import CollectionsPanel from "@/components/CollectionsPanel";
-import MyWorldPanel from "@/components/MyWorldPanel";
+import WorldPulseMini from "@/components/WorldPulseMini";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -49,6 +43,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [sort, setSort] = useState("recommended");
+  const [chromeExpanded, setChromeExpanded] = useState(true);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -64,7 +59,6 @@ export default function Home() {
     );
   }, []);
 
-  // Debounce search input so we're not hitting the API on every keystroke.
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query), 350);
     return () => clearTimeout(t);
@@ -72,12 +66,11 @@ export default function Home() {
 
   useEffect(() => {
     const [lat, lng] = center;
-    const categoriesParam = activeCategories.join(",");
     const params = new URLSearchParams({
       lat: String(lat),
       lng: String(lng),
       radiusKm: "25",
-      categories: categoriesParam,
+      categories: activeCategories.join(","),
       sort,
     });
     if (debouncedQuery.trim()) params.set("q", debouncedQuery.trim());
@@ -107,46 +100,64 @@ export default function Home() {
   }
 
   return (
-    <div className="world-shell">
+    <div className="immersive-shell">
+      {/* The map fills the entire screen — everything else floats on top of it. */}
+      <div className="immersive-map">
+        <MapView center={center} places={places} />
+      </div>
+
+      <CompassRose />
+
       <NavRail profile={profile} />
 
-      <div className="world-main">
-        <div className="world-hero">
-          <div className="world-hero-top">
-            <div className="world-brand">
-              WAY <span className="dot">◇</span>
-            </div>
-            {session ? (
-              <Link href="/new">
-                <button className="discover-btn">+ Discover</button>
-              </Link>
-            ) : (
-              <Link href="/login">
-                <button className="discover-btn ghost">Sign in</button>
-              </Link>
-            )}
+      <div className="floating-top">
+        <div className="floating-brand">
+          WAY <span className="dot">◇</span>
+        </div>
+
+        <div className="floating-search">
+          <Search size={15} color="var(--muted)" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="What do you want to find?"
+          />
+          {intentUsed && query.trim() && (
+            <span className="ai-badge" title="AI understood this search beyond literal words">
+              <Sparkles size={11} /> AI
+            </span>
+          )}
+        </div>
+
+        {session ? (
+          <Link href="/new">
+            <button className="discover-btn">+ Discover</button>
+          </Link>
+        ) : (
+          <Link href="/login">
+            <button className="discover-btn ghost">Sign in</button>
+          </Link>
+        )}
+      </div>
+
+      {chromeExpanded && (
+        <div className="floating-filters">
+          <div className="filter-bar-inline">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                className={`chip-select small ${activeCategories.includes(c.id) ? "active" : ""}`}
+                style={{
+                  borderColor: c.color,
+                  color: activeCategories.includes(c.id) ? "#0a0e14" : c.color,
+                  background: activeCategories.includes(c.id) ? c.color : "transparent",
+                }}
+                onClick={() => toggleCategory(c.id)}
+              >
+                {c.emoji} {c.label}
+              </button>
+            ))}
           </div>
-
-          <h1 className="world-title">
-            <CompassRose />
-            DISCOVER <em>YOUR</em> WORLD
-          </h1>
-          <p className="world-subtitle">Real people. Real places. Real stories.</p>
-
-          <div className="world-search">
-            <Search size={16} color="var(--muted)" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="What do you want to find? Try a word, a vibe, a tag…"
-            />
-            {intentUsed && query.trim() && (
-              <span className="ai-badge" title="AI understood this search beyond literal words">
-                <Sparkles size={12} /> AI
-              </span>
-            )}
-          </div>
-
           <div className="sort-row">
             {SORT_MODES.map((s) => (
               <button
@@ -158,57 +169,19 @@ export default function Home() {
               </button>
             ))}
           </div>
-
-          <div className="filter-bar-inline">
-            {CATEGORIES.map((c) => (
-              <button
-                key={c.id}
-                className={`chip-select small ${activeCategories.includes(c.id) ? "active" : ""}`}
-                style={{
-                  borderColor: c.color,
-                  color: activeCategories.includes(c.id) ? "#02040a" : c.color,
-                  background: activeCategories.includes(c.id) ? c.color : "transparent",
-                }}
-                onClick={() => toggleCategory(c.id)}
-              >
-                {c.emoji} {c.label}
-              </button>
-            ))}
-          </div>
         </div>
+      )}
 
-        <div className="dashboard-grid">
-          <div className="hero-map-card panel glass">
-            <MapView center={center} places={places} />
-            <div className="hero-map-status">
-              <span>{statusMsg || `${places.length} discoveries · ${SORT_MODES.find((s) => s.id === sort)?.label}`}</span>
-            </div>
-          </div>
+      <button className="chrome-toggle" onClick={() => setChromeExpanded((v) => !v)}>
+        {chromeExpanded ? "Hide filters" : "Show filters"}
+      </button>
 
-          <div className="dashboard-side">
-            <WorldPulse />
-            <LeaderboardPanel />
-          </div>
-        </div>
+      <div className="floating-status">
+        <span>{statusMsg || `${places.length} discoveries · ${SORT_MODES.find((s) => s.id === sort)?.label}`}</span>
+      </div>
 
-        <div className="dashboard-bottom-grid">
-          {session && profile ? (
-            <QuestPanel />
-          ) : (
-            <div className="panel glass bottom-panel">
-              <div className="panel-header">
-                <span>Quests</span>
-              </div>
-              <p className="status">Sign in to start earning XP and unlocking badges.</p>
-            </div>
-          )}
-          <TrendingPanel />
-          <CollectionsPanel />
-          <CommunityPanel />
-          {session && profile && (
-            <MyWorldPanel userId={profile.id} discoveriesCount={profile.discoveriesCount} level={profile.level} />
-          )}
-        </div>
+      <div className="floating-pulse">
+        <WorldPulseMini />
       </div>
     </div>
   );

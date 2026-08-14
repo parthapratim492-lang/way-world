@@ -9,13 +9,14 @@ import Follow from "@/models/Follow";
 import { computeLevel } from "@/lib/gamification";
 import { BADGES } from "@/lib/badges";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
-    const userId = new mongoose.Types.ObjectId(params.id);
+    const { id } = await params;
+    const userId = new mongoose.Types.ObjectId(id);
 
-    const user = await User.findById(params.id).lean();
+    const user = await User.findById(id).lean();
     if (!user) return NextResponse.json({ error: "Explorer not found" }, { status: 404 });
 
     const [discoveries, followerCount, followingCount, isFollowing, cafeCount, firstLightCount, nightCountResult] =
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         Follow.countDocuments({ following: userId }),
         Follow.countDocuments({ follower: userId }),
         session?.user?.id
-          ? Follow.exists({ follower: session.user.id, following: params.id })
+          ? Follow.exists({ follower: session.user.id, following: id })
           : Promise.resolve(false),
         Place.countDocuments({ createdBy: userId, category: "cafe" }),
         Place.countDocuments({ createdBy: userId, isFirstDiscovery: true }),
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const badges = BADGES.map((b) => ({ ...b, unlocked: unlockedIds.has(b.id) }));
 
     return NextResponse.json({
-      id: params.id,
+      id,
       name: (user as any).name,
       xp: (user as any).xp,
       level,
@@ -86,7 +87,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       followerCount,
       followingCount,
       isFollowing: Boolean(isFollowing),
-      isOwnProfile: session?.user?.id === params.id,
+      isOwnProfile: session?.user?.id === id,
       discoveries,
       badges,
       currentStreak,

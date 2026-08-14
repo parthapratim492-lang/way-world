@@ -8,12 +8,13 @@ import Save from "@/models/Save";
 import Signal from "@/models/Signal";
 import { computeLevel } from "@/lib/gamification";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
+    const { id } = await params;
 
-    const place = await Place.findById(params.id).lean();
+    const place = await Place.findById(id).lean();
     if (!place) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     let creator = null;
@@ -26,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     }
 
     const isSaved = session?.user?.id
-      ? Boolean(await Save.exists({ user: session.user.id, place: params.id }))
+      ? Boolean(await Save.exists({ user: session.user.id, place: id }))
       : false;
 
     // Real aggregated counts — how many distinct users applied each signal.
