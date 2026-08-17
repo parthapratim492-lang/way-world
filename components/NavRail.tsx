@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { Compass, Home, Rss, Bookmark, Trophy, Users, LogOut, Sparkles } from "lucide-react";
+import { Compass, Home, Rss, Bookmark, Trophy, Users, LogOut, Sparkles, BookOpen } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Home", icon: Home, href: "/", active: true },
   { label: "Explore", icon: Compass, active: false },
   { label: "Pulse", icon: Rss, href: "/pulse", active: true },
+  { label: "Journal", icon: BookOpen, href: "/blog", active: true },
   { label: "Saved", icon: Bookmark, href: "/saved", active: true },
   { label: "Quests", icon: Trophy, href: "/quests", active: true },
   { label: "Explorers", icon: Users, href: "/leaderboard", active: true },
